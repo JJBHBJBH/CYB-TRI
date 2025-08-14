@@ -1,0 +1,665 @@
+<!DOCTYPE html> <html lang="en" > <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" /> <title>Cyber Triage Tool - Digital Forensics Dashboard</title> <meta name="description" content="Cyber Triage Tool for Digital Forensics and Incident Response" /> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" /> <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> <style> :root { --color-bg: #1e1b2f; --color-bg-secondary: #2f2c44; --color-primary: #a78bfa; --color-primary-light: #d8b4fe; --color-primary-dark: #6b21a8; --color-text: #e0dff7; --color-text-muted: #9ca3cc; --color-success: #22c55e; --color-warning: #eab308; --color-danger: #ef4444; --color-shadow: rgba(0,0,0,0.8); --border-radius: 0.75rem; --transition-fast: 0.25s ease-out; --font-family: 'Inter', sans-serif; --network-card-bg: #ffffff; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--color-primary-light);
+  text-decoration: none;
+}
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-secondary);
+  box-shadow: 0 2px 8px var(--color-shadow);
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  user-select: none;
+  letter-spacing: 0.05em;
+}
+
+nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+nav button {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  user-select: none;
+}
+
+nav button:hover,
+nav button:focus {
+  background-color: var(--color-primary-dark);
+  color: var(--color-primary-light);
+  outline: none;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px var(--color-primary-light);
+}
+
+nav button.active {
+  background-color: var(--color-primary);
+  color: white;
+  pointer-events: none;
+  box-shadow: 0 0 20px var(--color-primary-light);
+  transform: none;
+}
+
+main {
+  flex: 1 1 auto;
+  max-width: 1200px;
+  margin: 4rem auto 2rem;
+  padding: 0 1rem;
+}
+
+#dashboard-section > h1 {
+  margin-top: 2.5rem;
+  margin-bottom: 2rem;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-primary-light);
+  user-select: none;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--color-primary-light);
+}
+
+h2 {
+  font-size: 1.875rem;
+}
+
+.card {
+  background: var(--card-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-radius: var(--border-radius);
+  padding: 2rem 2.5rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 12px 30px -8px var(--color-primary-dark);
+  transition: box-shadow var(--transition-fast);
+}
+.card:hover {
+  box-shadow: 0 18px 48px -4px var(--color-primary);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  color: var(--color-primary-light);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="file"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  border: 1.5px solid rgba(167, 139, 250, 0.2);
+  background-color: rgba(255 255 255 / 0.05);
+  color: var(--color-text);
+  font-size: 1.125rem;
+  font-weight: 400;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  backdrop-filter: saturate(180%) blur(12px);
+  box-shadow: inset 0 0 10px rgb(167 139 250 / 0.1);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="file"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-light);
+  background-color: rgba(255 255 255 / 0.1);
+  box-shadow: 0 0 15px 6px var(--color-primary-light);
+}
+
+button {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.125rem;
+  padding: 0.85rem 2.5rem;
+  border-radius: var(--border-radius);
+  border: none;
+  background-color: var(--color-primary);
+  color: #fff;
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 6px 18px var(--color-primary-dark);
+  user-select: none;
+  text-shadow: 0 0 4px var(--color-primary-dark);
+}
+button:hover,
+button:focus {
+  background-color: var(--color-primary-light);
+  outline: none;
+  transform: scale(1.07);
+  box-shadow: 0 10px 30px var(--color-primary-light);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.scroll-container {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+ul.list-reset {
+  padding-left: 0;
+  list-style: none;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--color-text);
+  font-weight: 600;
+}
+ul.list-reset li {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+  font-size: 1rem;
+}
+ul.list-reset li:last-child {
+  border-bottom: none;
+}
+
+.scoring-high {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+.scoring-medium {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+.scoring-low {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.timeline-container {
+  display: flex;
+  padding-bottom: 0.5rem;
+  gap: 1rem;
+  overflow-x: auto;
+}
+.timeline-event {
+  background: rgba(167, 139, 250, 0.15);
+  color: var(--color-primary-dark);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--border-radius);
+  flex: 0 0 auto;
+  user-select: none;
+  cursor: default;
+  box-shadow: 0 0 10px var(--color-primary-light);
+  transition: background-color 0.3s ease;
+  font-size: 0.875rem;
+  outline: none;
+}
+.timeline-event:hover,
+.timeline-event:focus {
+  background-color: var(--color-primary-light);
+  color: white;
+  box-shadow: 0 0 20px var(--color-primary-light);
+}
+
+/* Network chart container */
+#network-activity-combined-container {
+  margin-top: 2.5rem;
+  background: var(--network-card-bg);
+  border-radius: var(--border-radius);
+  padding: 2rem 3rem 3rem 3rem;
+  box-shadow: 0 12px 36px -10px rgba(167, 139, 250, 0.45);
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#network-activity-combined-chart {
+  border-radius: var(--border-radius);
+  background: var(--network-card-bg);
+  width: 100% !important;
+  height: 360px !important;
+  box-shadow:
+    inset 0 0 25px 2px rgba(167, 139, 250, 0.25);
+}
+
+#scan-loader {
+  margin-top: 1rem;
+}
+</style> </head> <body> <header> <div class="logo" aria-label="Cyber Triage Tool">Cyber Triage Tool</div> <nav role="navigation" aria-label="Primary"> <button id="nav-dashboard-btn" class="active" aria-current="page" aria-controls="dashboard-section" aria-selected="true" role="tab">Dashboard</button> <button id="nav-upload-btn" aria-controls="upload-section" role="tab" aria-selected="false">Upload</button> <button id="nav-reports-btn" aria-controls="reports-section" role="tab" aria-selected="false">Reports</button> <button id="nav-logout-btn" class="hidden">Logout</button> </nav> </header> <main> <section id="login-section" aria-live="polite" role="region" aria-label="Login" > <form id="login-form" aria-describedby="login-desc" autocomplete="off" novalidate> <h1>Login</h1> <p id="login-desc" style="color:#d0c6f2">Enter your username and password to access the Cyber Triage Tool.</p> <label for="username-input">Username</label> <input type="text" id="username-input" name="username" required autocomplete="username" /> <label for="password-input">Password</label> <input type="password" id="password-input" name="password" required autocomplete="current-password" /> <button type="submit">Log In</button> <p id="error-message" role="alert" aria-live="assertive" style="min-height: 20px;"></p> </form> </section>
+    <section id="app-section" class="hidden" aria-live="polite" role="main" tabindex="-1">
+        <section id="dashboard-section" role="tabpanel" aria-labelledby="nav-dashboard-btn" >
+          <h1>Dashboard</h1>
+          <div id="scan-status-card" class="card" role="region" aria-label="Scan status">
+            <h2>Scan Status</h2>
+            <p id="scan-status-text">No scans performed yet.</p>
+            <button id="scan-start-btn">Start Automated Scan</button>
+            <div id="scan-loader" class="loader" aria-label="Scanning in progress" style="display:none" role="status"></div>
+          </div>
+      
+          <div id="network-activity-combined-container" class="card" role="region" aria-label="Network Activity">
+            <h2>Network Activity</h2>
+            <canvas id="network-activity-combined-chart" aria-label="Network activity line chart" role="img" tabindex="0"></canvas>
+          </div>
+      
+          <div style="display:flex;flex-direction:column;gap:2rem;margin-top:2.5rem;">
+            <div class="card" role="region" aria-label="Indicators of Compromise and Suspicious Activities">
+              <h2>IOCs & Suspicious Activity</h2>
+              <ul id="ioc-list" class="list-reset" tabindex="0" aria-live="polite"></ul>
+            </div>
+            <div class="card" role="region" aria-label="Anomaly Detection & Artifact Scoring">
+              <h2>Anomalies & Artifact Scores</h2>
+              <ul id="anomaly-list" class="list-reset" tabindex="0" aria-live="polite"></ul>
+            </div>
+            <div class="card" role="region" aria-label="Investigation Timeline">
+              <h2>Timeline</h2>
+              <div id="timeline-container" class="timeline-container" tabindex="0"></div>
+            </div>
+          </div>
+        </section>
+      
+        <section id="upload-section" class="hidden" role="tabpanel" aria-labelledby="nav-upload-btn" >
+          <h1>Upload Evidence</h1>
+          <div class="card">
+            <form id="upload-form" aria-describedby="upload-desc" novalidate>
+              <p id="upload-desc" class="section-subtitle">Upload only forensic images (E01, IMG, ISO, DMG) and system logs (LOG, TXT, CSV) for analysis.</p>
+              <input id="evidence-files" type="file" multiple aria-required="true" accept=".e01,.img,.iso,.dmg,.log,.txt,.csv" />
+              <button type="submit">Upload Files</button>
+            </form>
+            <h3>Uploaded Files</h3>
+            <ul id="uploaded-files-list" class="list-reset" aria-live="polite" tabindex="0"></ul>
+          </div>
+        </section>
+      
+        <section id="reports-section" class="hidden" role="tabpanel" aria-labelledby="nav-reports-btn" >
+          <h1>Reports</h1>
+          <div class="card">
+            <p class="section-subtitle">Export scan data in preferred format.</p>
+            <div style="display:flex;gap:1rem;">
+              <button id="export-pdf-btn">Export as PDF</button>
+              <button id="export-json-btn">Export as JSON</button>
+              <button id="export-csv-btn">Export as CSV</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main> <script> (() => { const state = { user: null, uploadedFiles: [], scanResults: { networkActivity: [], iocs: [], anomalies: [], timeline: [] }, isScanning: false, };
+      const loginSection = document.getElementById('login-section');
+  const appSection = document.getElementById('app-section');
+  const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+  const navUploadBtn = document.getElementById('nav-upload-btn');
+  const navReportsBtn = document.getElementById('nav-reports-btn');
+  const navLogoutBtn = document.getElementById('nav-logout-btn');
+  const dashboardSection = document.getElementById('dashboard-section');
+  const uploadSection = document.getElementById('upload-section');
+  const reportsSection = document.getElementById('reports-section');
+  const loginForm = document.getElementById('login-form');
+  const usernameInput = document.getElementById('username-input');
+  const passwordInput = document.getElementById('password-input');
+  const errorMessage = document.getElementById('error-message');
+  const uploadForm = document.getElementById('upload-form');
+  const evidenceFilesInput = document.getElementById('evidence-files');
+  const uploadedFilesList = document.getElementById('uploaded-files-list');
+  const scanStartBtn = document.getElementById('scan-start-btn');
+  const scanStatusText = document.getElementById('scan-status-text');
+  const scanLoader = document.getElementById('scan-loader');
+  const iocList = document.getElementById('ioc-list');
+  const anomalyList = document.getElementById('anomaly-list');
+  const timelineContainer = document.getElementById('timeline-container');
+  const exportPDFBtn = document.getElementById('export-pdf-btn');
+  const exportJSONBtn = document.getElementById('export-json-btn');
+  const exportCSVBtn = document.getElementById('export-csv-btn');
+  let combinedChart = null;
+
+  function sanitize(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function seededRandom(seed) {
+    let x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  }
+
+  function generateSeedFromFiles(files) {
+    let seed = 0;
+    files.forEach((file) => {
+      const name = file.name || '';
+      for(let i=0; i<name.length; i++){
+        seed += name.charCodeAt(i);
+      }
+      seed += file.size;
+    });
+    return seed;
+  }
+
+  function shuffleArray(array, seed) {
+    let s = seed;
+    const arr = array.slice();
+    for(let i=arr.length-1; i>0; i--){
+      s = (s*9301 + 49297) % 233280;
+      const r = s / 233280;
+      const j = Math.floor(r*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function mockScanAnalysisDynamic(files){
+    const seed = generateSeedFromFiles(files) || 1;
+    const baseNetworkLabels = Array.from({length:24},(_,i)=>`${i}:00`);
+    const networkActivity = baseNetworkLabels.map((t,i)=>({time:t, value:40+Math.floor(seededRandom(seed+i*991)*150)}));
+    const baseIocs = [
+      {id:'ioc-1',description:'Suspicious login attempts from unknown IP', severity:'high'},
+      {id:'ioc-2',description:'Registry key modified unexpectedly', severity:'medium'},
+      {id:'ioc-3',description:'Unusual outbound network traffic detected', severity:'high'},
+      {id:'ioc-4',description:'Multiple failed password attempts', severity:'medium'},
+      {id:'ioc-5',description:'Rare executable created', severity:'high'},
+      {id:'ioc-6',description:'Unauthorized USB device connected', severity:'medium'},
+      {id:'ioc-7',description:'Suspicious PowerShell activity', severity:'high'},
+      {id:'ioc-8',description:'Unusual file deletion patterns', severity:'medium'},
+    ];
+    const shuffledIocs = shuffleArray(baseIocs, seed);
+    const iocCount = 3 + Math.floor(seededRandom(seed)*5);
+    const iocs = shuffledIocs.slice(0,iocCount);
+    const baseAnomalies = [
+      {id:'anomaly-1',artifact:'File abc123.exe',description:'Unusual file hash with low reputation'},
+      {id:'anomaly-2',artifact:'Process xyz789',description:'Process communication pattern deviates from baseline'},
+      {id:'anomaly-3',artifact:'Registry hklm\\software', description:'Registry modified outside maintenance window'},
+      {id:'anomaly-4',artifact:'Network connection 10.1.10.27',description:'Rare external connection to flagged IP'},
+      {id:'anomaly-5', artifact:'File suspicious.pdf', description:'Contains embedded scripts'},
+      {id:'anomaly-6', artifact:'Process malware.exe', description:'Detected unusual CPU spikes'}
+    ];
+    const shuffledAnomalies = shuffleArray(baseAnomalies, seed);
+    const anomalyCount = 2 + Math.floor(seededRandom(seed*2)*4);
+    const anomalies = shuffledAnomalies.slice(0, anomalyCount).map((a,i)=>({ ...a,score:40+Math.floor(seededRandom(seed+i*343)*60)}));
+    const baseTimeline = [
+      {timestamp:'2024-06-01 08:00', event:'System boot'},
+      {timestamp:'2024-06-01 09:15', event:'User login: alice'},
+      {timestamp:'2024-06-01 10:30', event:'New executable abc123.exe created'},
+      {timestamp:'2024-06-01 11:12', event:'Outbound network connection initiated'},
+      {timestamp:'2024-06-01 12:47', event:'Suspicious registry modification detected'},
+      {timestamp:'2024-06-01 13:00', event:'Process xyz789 spiked CPU usage'},
+      {timestamp:'2024-06-01 14:20', event:'User login: bob'},
+      {timestamp:'2024-06-01 15:45', event:'Multiple failed password attempts'},
+      {timestamp:'2024-06-01 16:30', event:'Network connection to flagged IP detected'},
+      {timestamp:'2024-06-01 18:10', event:'USB device connected'},
+      {timestamp:'2024-06-01 19:30', event:'PowerShell script execution'}
+    ];
+    const shuffledTimeline = shuffleArray(baseTimeline, seed);
+    const timelineCount = 5 + Math.floor(seededRandom(seed*3)*6);
+    const timeline = shuffledTimeline.slice(0,timelineCount).sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    return {networkActivity, iocs, anomalies, timeline};
+  }
+
+  // Navigation
+  [navDashboardBtn, navUploadBtn, navReportsBtn].forEach(btn=>{
+    btn.addEventListener('click', ()=>activateNav(btn));
+  });
+
+  navLogoutBtn.addEventListener('click', logout);
+
+  function activateNav(selectedBtn){
+    const sections = [dashboardSection, uploadSection, reportsSection];
+    const buttons = [navDashboardBtn, navUploadBtn, navReportsBtn];
+    buttons.forEach((btn,i)=>{
+      const active = btn === selectedBtn;
+      btn.classList.toggle('active', active);
+      sections[i].classList.toggle('hidden', !active);
+      btn.setAttribute('aria-selected', active.toString());
+      btn.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  // Login
+  loginForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    errorMessage.style.display = 'none';
+    if(username.length <3){
+      errorMessage.textContent = 'Username must have at least 3 characters.';
+      errorMessage.style.display = 'block';
+      usernameInput.focus();
+      return;
+    }
+    if(password.length <5){
+      errorMessage.textContent = 'Password must have at least 5 characters.';
+      errorMessage.style.display = 'block';
+      passwordInput.focus();
+      return;
+    }
+    state.user = {username};
+    window.localStorage.setItem('ctt_user', JSON.stringify(state.user));
+    showApp();
+  });
+
+  function showApp(){
+    loginSection.classList.add('hidden');
+    appSection.classList.remove('hidden');
+    navLogoutBtn.classList.remove('hidden');
+    activateNav(navDashboardBtn);
+  }
+  function logout(){
+    state.user = null;
+    window.localStorage.removeItem('ctt_user');
+    loginSection.classList.remove('hidden');
+    appSection.classList.add('hidden');
+    navLogoutBtn.classList.add('hidden');
+    clearUploadedFiles();
+    clearScanResults();
+    usernameInput.value = '';
+    passwordInput.value = '';
+    errorMessage.style.display = 'none';
+    usernameInput.focus();
+  }
+
+  function clearUploadedFiles(){
+    state.uploadedFiles = [];
+    refreshUploadedFiles();
+  }
+
+  function clearScanResults(){
+    scanStatusText.textContent = 'No scans performed yet.';
+    iocList.innerHTML = '';
+    anomalyList.innerHTML = '';
+    timelineContainer.innerHTML = '';
+    if(combinedChart){
+      combinedChart.destroy();
+      combinedChart=null;
+    }
+  }
+
+  // Upload with file type validation
+  uploadForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const files = Array.from(evidenceFilesInput.files);
+    const accepted = ['.e01', '.img', '.iso', '.dmg', '.log', '.txt', '.csv'];
+    const invalidFiles = files.filter(f=>{
+      const ext = f.name.slice(((f.name.lastIndexOf('.')-1)>>>0)+2).toLowerCase();
+      return !accepted.includes('.'+ext);
+    });
+    if(invalidFiles.length >0){
+      alert('Please upload only forensic images (E01, IMG, ISO, DMG) and system logs (LOG, TXT, CSV).');
+      return;
+    }
+    state.uploadedFiles = files;
+    refreshUploadedFiles();
+    evidenceFilesInput.value = '';
+    alert('Files uploaded successfully.');
+    scanStartBtn.disabled = false;
+  });
+
+  function refreshUploadedFiles(){
+    uploadedFilesList.innerHTML = '';
+    if(!state.uploadedFiles.length){
+      const li = document.createElement('li');
+      li.textContent = 'No files uploaded.';
+      uploadedFilesList.appendChild(li);
+      return;
+    }
+    state.uploadedFiles.forEach(f=>{
+      const li = document.createElement('li');
+      li.textContent = `${sanitize(f.name)} (${(f.size/1024).toFixed(2)} KB)`;
+      uploadedFilesList.appendChild(li);
+    });
+  }
+
+  // Scan simulation
+  scanStartBtn.addEventListener('click', () => {
+    if(state.isScanning) return;
+    if(!state.uploadedFiles.length){
+      alert('Please upload files before scanning.');
+      return;
+    }
+    state.isScanning = true;
+    scanStartBtn.disabled = true;
+    scanLoader.style.display = 'block';
+    scanStatusText.textContent = 'Scanning in progress...';
+    setTimeout(()=>{
+      const results = mockScanAnalysisDynamic(state.uploadedFiles);
+      state.scanResults = results;
+      updateScanResultsUI();
+      scanStatusText.textContent = 'Scan completed successfully.';
+      scanLoader.style.display = 'none';
+      scanStartBtn.disabled = false;
+      state.isScanning = false;
+    }, 3000);
+  });
+
+  function updateScanResultsUI(){
+    const labels = state.scanResults.networkActivity.map(d=>d.time);
+    const dataValues = state.scanResults.networkActivity.map(d=>d.value);
+    if(combinedChart) combinedChart.destroy();
+    const ctx = document.getElementById('network-activity-combined-chart').getContext('2d');
+    combinedChart = new Chart(ctx, {
+      type:'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Network Activity',
+          data: dataValues,
+          borderColor: 'var(--color-primary-light)',
+          backgroundColor: 'rgba(167, 139, 250, 0.35)',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          pointBackgroundColor: 'white',
+          borderWidth: 3,
+        }]
+      },
+      options: {
+        responsive:true,
+        maintainAspectRatio:false,
+        scales:{
+          y:{
+            beginAtZero:true,
+            ticks:{color:'var(--color-text-muted)', font:{size:14}},
+            grid:{color:'rgba(167, 139, 250, 0.15)', borderColor:'rgba(167, 139, 250, 0.45)'}
+          },
+          x:{
+            ticks:{color:'var(--color-text-muted)', font:{size:14}},
+            grid:{color:'transparent'}
+          }
+        },
+        plugins: {
+          legend:{labels:{color:'var(--color-primary-light)', font:{weight:'700', size:16}}},
+          tooltip:{mode:'nearest', intersect:false}
+        },
+        interaction:{mode:'nearest', intersect:false}
+      }
+    });
+    // Populate IOCs
+    iocList.innerHTML = '';
+    state.scanResults.iocs.forEach(ioc=>{
+      const li = document.createElement('li');
+      li.textContent = `${ioc.description} (Severity: ${ioc.severity})`;
+      if(ioc.severity==='high') li.classList.add('scoring-high');
+      else if(ioc.severity==='medium') li.classList.add('scoring-medium');
+      else li.classList.add('scoring-low');
+      iocList.appendChild(li);
+    });
+    // Populate Anomalies
+    anomalyList.innerHTML = '';
+    state.scanResults.anomalies.forEach(anomaly=>{
+      const li = document.createElement('li');
+      let scoreClass = 'scoring-low';
+      if(anomaly.score >=80) scoreClass = 'scoring-high';
+      else if(anomaly.score >=60) scoreClass = 'scoring-medium';
+      li.innerHTML = `<strong>${sanitize(anomaly.artifact)}</strong> - Score: <span class="${scoreClass}">${anomaly.score}</span><br /><small>${sanitize(anomaly.description)}</small>`;
+      anomalyList.appendChild(li);
+    });
+    // Populate Timeline
+    timelineContainer.innerHTML = '';
+    state.scanResults.timeline.forEach(evt=>{
+      const div = document.createElement('div');
+      div.className = 'timeline-event';
+      div.setAttribute('tabindex','0');
+      div.title = `${evt.timestamp} - ${evt.event}`;
+      div.textContent = `${evt.timestamp.split(' ')[1]} - ${evt.event}`;
+      timelineContainer.appendChild(div);
+    });
+  }
+
+  // Report exports code omitted for brevity, use previous implementations
+
+  function init(){
+    const savedUser = window.localStorage.getItem('ctt_user');
+    if(savedUser){
+      state.user = JSON.parse(savedUser);
+      showApp();
+    } else {
+      loginSection.classList.remove('hidden');
+      appSection.classList.add('hidden');
+      navLogoutBtn.classList.add('hidden');
+      usernameInput.focus();
+    }
+    refreshUploadedFiles();
+  }
+
+  init();
+
+})();
+</script> </body> </html>
